@@ -1,14 +1,15 @@
 package com.example.newideasapp
 
+import android.animation.*
 import android.annotation.SuppressLint
-import android.content.Context
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MotionEvent.*
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.ScaleAnimation
+import androidx.appcompat.app.AppCompatActivity
 import com.example.newideasapp.databinding.ActivityMovingViewBinding
+
 
 class MovingViewActivity : AppCompatActivity() {
     private var isScaled = false
@@ -34,28 +35,27 @@ class MovingViewActivity : AppCompatActivity() {
     }
 
     private fun setUpFlippingController() = with(binding) {
+        val oldY = imageToMov.y
+        val oldX = imageToMov.x
+
         flipButton.setOnClickListener {
-            val viewHeight = it.height
-            val viewWidth = it.width
-            val widthToAdd = (viewWidth * 1.2 - viewWidth).toFloat()
-            val heightToAdd = (viewHeight * 1.35 - viewHeight).toFloat()
-            val isXPositive = direction == Direction.TOP_LEFT && direction == Direction.BOTTOM_LEFT
-            val isYPositive = direction == Direction.TOP_LEFT && direction == Direction.TOP_RIGHT
+            val width = imageToMov.width
+            val height = imageToMov.height
+            //top
+            val distanceYToAdd = (height * 1.1 - height).toFloat()
+            //right
+            val distanceXToAdd = (width * 1.1 - width).toFloat()
 
             if (isScaled.not()) {
                 isScaled = true
-                imageToMov.animate().translationX(if (isXPositive) widthToAdd else -widthToAdd)
-                    .translationY(if (isYPositive) heightToAdd else -heightToAdd)
-                    .scaleX(1.2F)
-                    .scaleY(1.2F)
-                    .setDuration(1000)
+                imageToMov.animate().scaleY(1.2F).scaleX(1.2F)
+                    .y(imageToMov.y + distanceYToAdd)
+                    .x(imageToMov.x - distanceXToAdd).setDuration(1000)
                     .start()
+
             } else {
-                imageToMov.animate().translationX(0F)
-                    .translationY(0F)
-                    .scaleX(1F)
-                    .scaleY(1F)
-                    .setDuration(1000)
+                imageToMov.animate().scaleY(1F).scaleX(1F).y(imageToMov.y - distanceYToAdd)
+                    .x(imageToMov.x + distanceXToAdd).setDuration(1000)
                     .start()
                 isScaled = false
             }
@@ -123,14 +123,50 @@ class MovingViewActivity : AppCompatActivity() {
         BOTTOM_LEFT, BOTTOM_RIGHT
     }
 
-    fun scaleView(v: View, fromY: Float, toY: Float, fromX: Float, toX: Float) {
+    fun getImageDirection(): Direction = with(binding) {
+        val centerYPos: Float = imageToMov.y + imageToMov.height / 2
+        val centerXPos: Float = imageToMov.x + imageToMov.width / 2
+        return if (centerXPos >= mWidth / 2) {
+            return if (centerYPos <= mHeight / 2) {
+                Direction.TOP_RIGHT
+            } else {
+                Direction.BOTTOM_RIGHT
+            }
+        } else {
+            if (centerYPos <= mHeight / 2) {
+                Direction.TOP_LEFT
+            } else {
+                Direction.BOTTOM_LEFT
+            }
+
+        }
+    }
+
+    private fun scaleView(v: View, fromY: Float, toY: Float, fromX: Float, toX: Float) {
+        //x = 0 left, y = 1 ->top
+        val requiredPair = when (getImageDirection()) {
+            Direction.TOP_RIGHT -> {
+                Pair(1F, 0F)
+            }
+            Direction.TOP_LEFT -> {
+                Pair(0F, 0F)
+            }
+            Direction.BOTTOM_LEFT -> {
+                Pair(0F, 1F)
+            }
+            else -> {
+                Pair(1F, 1F)
+            }
+        }
         val anim: Animation = ScaleAnimation(
             fromX, toX,  // Start and end values for the X axis scaling
             fromY, toY,  // Start and end values for the Y axis scaling
-            Animation.ABSOLUTE, 0f,  // Pivot point of X scaling
-            Animation.ABSOLUTE, 1f
-        ) // Pivot point of Y scaling
-        anim.fillAfter = true // Needed to keep the result of the animation
+            Animation.RELATIVE_TO_SELF, requiredPair.first,  // Pivot point of X scaling
+            Animation.RELATIVE_TO_SELF, requiredPair.second // Pivot point of Y scaling
+        )
+        anim.fillBefore = true // Needed to keep the result of the animation
+        anim.isFillEnabled = true
+        anim.fillAfter = true
         anim.duration = 1000
         v.startAnimation(anim)
     }
